@@ -80,18 +80,8 @@ Args:
     message: Human-readable message describing the current step.
 """
 
-# ---------------------------------------------------------------------------
-# Pipeline Configuration
-# ---------------------------------------------------------------------------
-
 BREW_TARGET_SECONDS = 60.0
 REGISTRY_SAVE_THRESHOLD = 75.0  # only save servers with score >= this
-
-
-# ---------------------------------------------------------------------------
-# Pipeline Class
-# ---------------------------------------------------------------------------
-
 
 class MCPressoPipeline:
     """End-to-end MCP server generation pipeline.
@@ -206,9 +196,6 @@ class MCPressoPipeline:
         pipeline_start = time.monotonic()
         self._emit("start", f"Starting the brew for: {description[:80]}...")
 
-        # ------------------------------------------------------------------
-        # Stage 0: Registry Search
-        # ------------------------------------------------------------------
         self._emit("generate", "⚙ Grinding beans... (searching registry)")
         registry_result = None
         seed_code: str | None = None
@@ -230,9 +217,6 @@ class MCPressoPipeline:
                 match_type.value,
             )
 
-        # ------------------------------------------------------------------
-        # Stage 1: Generate
-        # ------------------------------------------------------------------
         tier_msg = {
             RegistryMatchType.ADAPT: "adapting existing server (~10s)",
             RegistryMatchType.SEED: "using registry seed (~30s)",
@@ -267,9 +251,6 @@ class MCPressoPipeline:
             except Exception as exc:
                 logger.warning("Consistency check generation failed: %s", exc)
 
-        # ------------------------------------------------------------------
-        # Stage 2: Validate
-        # ------------------------------------------------------------------
         self._emit("validate", "🔍 Checking the brew... (validating)")
         validation_report = self.validator.validate(generation_result.source_code)
         logger.info(
@@ -279,9 +260,6 @@ class MCPressoPipeline:
             len(validation_report.warnings),
         )
 
-        # ------------------------------------------------------------------
-        # Stage 3: Repair (optional)
-        # ------------------------------------------------------------------
         repair_result = None
         final_source_code = generation_result.source_code
         final_report = validation_report
@@ -307,9 +285,6 @@ class MCPressoPipeline:
                 repair_result.success,
             )
 
-        # ------------------------------------------------------------------
-        # Stage 4: Score
-        # ------------------------------------------------------------------
         self._emit("score", "📊 Measuring the roast... (scoring)")
         confidence_score = self.scorer.compute_score(
             source_code=final_source_code,
@@ -322,9 +297,6 @@ class MCPressoPipeline:
             confidence_score.readiness_tier.value,
         )
 
-        # ------------------------------------------------------------------
-        # Stage 5: Test Generation (optional)
-        # ------------------------------------------------------------------
         test_result = None
         if with_tests:
             self._emit("testgen", "🧪 Running quality checks... (generating tests)")
@@ -348,9 +320,6 @@ class MCPressoPipeline:
             except Exception as exc:
                 logger.warning("Test generation failed (non-blocking): %s", exc)
 
-        # ------------------------------------------------------------------
-        # Stage 5b: Client Generation (optional, deterministic — no LLM)
-        # ------------------------------------------------------------------
         client_result: ClientGenResult | None = None
         if with_client:
             self._emit("clientgen", "☕ Pouring the cup... (generating client)")
@@ -371,9 +340,6 @@ class MCPressoPipeline:
             except Exception as exc:
                 logger.warning("Client generation failed (non-blocking): %s", exc)
 
-        # ------------------------------------------------------------------
-        # Stage 6: Output
-        # ------------------------------------------------------------------
         total_ms = (time.monotonic() - pipeline_start) * 1000
         under_60s = total_ms <= BREW_TARGET_SECONDS * 1000
 
@@ -390,9 +356,6 @@ class MCPressoPipeline:
             )
             logger.info("Server written to %s", output_path)
 
-        # ------------------------------------------------------------------
-        # Stage 7: Registry Save (if quality threshold met)
-        # ------------------------------------------------------------------
         registry_entry_id: str | None = None
         if save_to_registry and final_score >= REGISTRY_SAVE_THRESHOLD:
             try:
@@ -413,9 +376,6 @@ class MCPressoPipeline:
             except Exception as exc:
                 logger.warning("Registry save failed (non-blocking): %s", exc)
 
-        # ------------------------------------------------------------------
-        # Complete
-        # ------------------------------------------------------------------
         emoji = "✅" if readiness_tier in (
             ReadinessTier.PRODUCTION_READY, ReadinessTier.STAGING_READY
         ) else "⚠️"
@@ -526,30 +486,12 @@ class MCPressoPipeline:
             except Exception as exc:
                 logger.warning("Progress callback raised: %s", exc)
 
-
-# ---------------------------------------------------------------------------
-# Output Writing
-# ---------------------------------------------------------------------------
-
-
 def _write_output(
     output_path: str,
     source_code: str,
     test_result: "TestGenResult | None",
     client_result: "ClientGenResult | None" = None,
 ) -> None:
-    """Write server source code and optional test/client files to disk.
-
-    Creates parent directories if they don't exist.
-
-    Args:
-        output_path: Path for the server .py file.
-        source_code: Server source code to write.
-        test_result: Optional TestGenResult; if provided, writes test file
-                     alongside the server as test_<name>.py.
-        client_result: Optional ClientGenResult; if provided, writes a client
-                       script alongside the server as client_<name>.py.
-    """
     server_path = Path(output_path)
     server_path.parent.mkdir(parents=True, exist_ok=True)
     server_path.write_text(source_code, encoding="utf-8")
