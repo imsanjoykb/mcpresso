@@ -19,24 +19,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-
-# ---------------------------------------------------------------------------
-# Enumerations
-# ---------------------------------------------------------------------------
-
-
 class ReadinessTier(str, Enum):
-    """Execution readiness tier assigned by the scorer.
-
-    Tiers represent the confidence level that a generated server is fit
-    for deployment. Used as a composite metric in the paper's evaluation.
-
-    Attributes:
-        PRODUCTION_READY: Score ≥ 90, zero critical issues.
-        STAGING_READY: Score 75–89, zero critical issues.
-        DEVELOPMENT_ONLY: Score 50–74, may have non-critical issues.
-        NEEDS_REPAIR: Score < 50, requires human or automated intervention.
-    """
 
     PRODUCTION_READY = "PRODUCTION_READY"
     STAGING_READY = "STAGING_READY"
@@ -59,13 +42,6 @@ class ConfidenceLevel(str, Enum):
 
 
 class IssueSeverity(str, Enum):
-    """Severity classification for validation findings.
-
-    Attributes:
-        CRITICAL: Must be resolved before deployment.
-        WARNING: Should be resolved but not blocking.
-        SUGGESTION: Optional improvements for code quality.
-    """
 
     CRITICAL = "CRITICAL"
     WARNING = "WARNING"
@@ -73,35 +49,15 @@ class IssueSeverity(str, Enum):
 
 
 class RegistryMatchType(str, Enum):
-    """How a registry lookup resolved for a new brew request.
-
-    Attributes:
-        ADAPT: Similarity > 0.85 — adapt existing server (~10s).
-        SEED: Similarity 0.60–0.85 — use as few-shot reference (~30s).
-        FULL_GENERATION: Similarity < 0.60 — generate from scratch (~60s).
-    """
+    """How a registry lookup resolved for a new brew request."""
 
     ADAPT = "ADAPT"
     SEED = "SEED"
     FULL_GENERATION = "FULL_GENERATION"
 
-
-# ---------------------------------------------------------------------------
-# Tool / Resource Specifications
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class ToolSpec:
-    """Specification of a single MCP tool extracted from generated code.
-
-    Attributes:
-        name: Unique tool identifier following MCP naming conventions.
-        description: Human-readable description of tool purpose.
-        input_schema: JSON Schema dict describing accepted parameters.
-        return_type: Expected MCP return type (e.g., 'TextContent').
-        is_async: Whether the tool handler is declared async.
-    """
+    """Specification of a single MCP tool extracted from generated code. """
 
     name: str
     description: str
@@ -126,30 +82,12 @@ class ResourceSpec:
     description: str
     mime_type: str = "text/plain"
 
-
-# ---------------------------------------------------------------------------
-# Generation
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class GenerationResult:
     """Result of the NL-to-MCP generation step.
 
     This is the primary output of ``generator.py`` and feeds directly into
-    the validation pipeline.
-
-    Attributes:
-        source_code: Complete, runnable Python source code of the MCP server.
-        tool_definitions: Extracted tool specifications from the generated code.
-        resource_definitions: Extracted resource specifications.
-        generation_time_ms: Wall-clock time for the generation API call.
-        model_used: Anthropic model identifier used for generation.
-        prompt_tokens: Input token count consumed.
-        completion_tokens: Output token count produced.
-        description: Original NL description that triggered generation.
-        registry_match_type: How the registry was used (adapt/seed/full).
-        seed_server_id: Registry entry ID used as seed, if applicable.
+    the validation pipeline.    seed_server_id: Registry entry ID used as seed, if applicable.
     """
 
     source_code: str
@@ -162,12 +100,6 @@ class GenerationResult:
     description: str = ""
     registry_match_type: RegistryMatchType = RegistryMatchType.FULL_GENERATION
     seed_server_id: str | None = None
-
-
-# ---------------------------------------------------------------------------
-# Validation
-# ---------------------------------------------------------------------------
-
 
 @dataclass
 class Issue:
@@ -245,12 +177,6 @@ class ValidationReport:
     validation_time_ms: float
     source_code_hash: str = ""
 
-
-# ---------------------------------------------------------------------------
-# Repair
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class FixRecord:
     """Audit record for a single automated fix applied during repair.
@@ -279,17 +205,7 @@ class RepairResult:
         agentic self-correction where the LLM evaluates its own output,
         identifies deficiencies, and generates improved versions.
         Capped at 3 iterations to bound API cost in production use.
-
-    Attributes:
-        repaired_code: Final source code after all repair iterations.
-        fixes_applied: Ordered list of fixes applied across all iterations.
-        repair_iterations: Number of repair cycles performed (max 3).
-        initial_score: Validation score before repair began.
-        final_score: Validation score after all repairs.
-        final_report: Full validation report of the repaired code.
-        success: True if final_score >= 75 (STAGING_READY threshold).
-        remaining_issues: Issues that could not be automatically resolved.
-    """
+ """
 
     repaired_code: str
     fixes_applied: list[FixRecord]
@@ -300,24 +216,9 @@ class RepairResult:
     success: bool
     remaining_issues: list[Issue]
 
-
-# ---------------------------------------------------------------------------
-# Confidence Scoring
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class ComplexityMetrics:
-    """Code complexity metrics used as input to the confidence scorer.
-
-    Attributes:
-        cyclomatic_complexity: Average cyclomatic complexity across functions.
-        lines_of_code: Total non-blank, non-comment lines.
-        tool_count: Number of MCP tool handlers defined.
-        resource_count: Number of MCP resource handlers defined.
-        function_count: Total number of function definitions.
-        avg_function_length: Average lines per function.
-    """
+    """Code complexity metrics used as input to the confidence scorer."""
 
     cyclomatic_complexity: float
     lines_of_code: int
@@ -359,12 +260,6 @@ class ConfidenceScore:
     complexity_metrics: ComplexityMetrics
     consistency_similarity: float
     zero_critical_issues: bool
-
-
-# ---------------------------------------------------------------------------
-# Registry
-# ---------------------------------------------------------------------------
-
 
 @dataclass
 class RegistryEntry:
@@ -419,12 +314,6 @@ class RegistrySearchResult:
     similarity: float
     match_type: RegistryMatchType
 
-
-# ---------------------------------------------------------------------------
-# Test Generation
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class TestGenResult:
     """Result of the automatic test suite generation.
@@ -452,12 +341,6 @@ class TestGenResult:
     security_tests: int
     generation_time_ms: float
     model_used: str
-
-
-# ---------------------------------------------------------------------------
-# Pipeline / Brew
-# ---------------------------------------------------------------------------
-
 
 @dataclass
 class BrewResult:
@@ -499,12 +382,6 @@ class BrewResult:
     brew_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     created_at: datetime = field(default_factory=datetime.utcnow)
     registry_entry_id: str | None = None
-
-
-# ---------------------------------------------------------------------------
-# Benchmark
-# ---------------------------------------------------------------------------
-
 
 @dataclass
 class BenchmarkCase:
@@ -589,12 +466,6 @@ class BenchmarkReport:
     case_results: list[BenchmarkCaseResult]
     run_timestamp: datetime
     run_duration_ms: float
-
-
-# ---------------------------------------------------------------------------
-# Client Generation
-# ---------------------------------------------------------------------------
-
 
 @dataclass
 class ClientGenResult:
