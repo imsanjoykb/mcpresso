@@ -1,17 +1,8 @@
-"""Tests for mcpresso.validator — 5-Category Quality Validation Engine.
-
-All tests use static analysis only (no API calls, no LLM dependencies).
-"""
 
 from __future__ import annotations
-
 import pytest
 from mcpresso.validator import MCPValidator, CATEGORY_WEIGHTS
 from mcpresso.models import IssueSeverity, ConfidenceLevel
-
-# ---------------------------------------------------------------------------
-# Fixtures — well-formed and malformed MCP server code
-# ---------------------------------------------------------------------------
 
 GOOD_SERVER = '''"""A well-formed MCP server for testing."""
 import asyncio
@@ -135,12 +126,6 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 '''
-
-
-# ---------------------------------------------------------------------------
-# Tests — MCPValidator
-# ---------------------------------------------------------------------------
-
 
 class TestMCPValidator:
     """Unit tests for the MCPValidator class."""
