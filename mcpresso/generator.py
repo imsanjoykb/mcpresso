@@ -38,10 +38,6 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
 DEFAULT_MODEL = "claude-sonnet-4-20250514"
 DEFAULT_MAX_TOKENS = 8192
 
@@ -144,24 +140,8 @@ Wrap your complete adapted Python code between these exact delimiters:
 Do not include any explanation outside the delimiters.
 """
 
-
-# ---------------------------------------------------------------------------
-# Generator Class
-# ---------------------------------------------------------------------------
-
-
 class MCPGenerator:
-    """NL-to-MCP generation engine backed by the Anthropic Claude API.
-
-    This class is responsible for the "grind" phase of the brew pipeline —
-    transforming a natural language description into structured Python source code
-    implementing a compliant MCP server.
-
-    Attributes:
-        model: Anthropic model identifier to use for generation.
-        max_tokens: Maximum tokens to generate in the completion.
-        client: Anthropic API client instance.
-
+    """
     Example:
         >>> generator = MCPGenerator()
         >>> result = await generator.generate(
@@ -176,16 +156,7 @@ class MCPGenerator:
         max_tokens: int = DEFAULT_MAX_TOKENS,
         api_key: str | None = None,
     ) -> None:
-        """Initialize the MCPGenerator.
 
-        Args:
-            model: Anthropic model to use. Defaults to claude-sonnet-4-20250514.
-            max_tokens: Maximum tokens for generation. Defaults to 8192.
-            api_key: Anthropic API key. Falls back to ANTHROPIC_API_KEY env var.
-
-        Raises:
-            ValueError: If no API key is found in args or environment.
-        """
         self.model = model or os.getenv("MCPRESSO_MODEL", DEFAULT_MODEL)
         self.max_tokens = max_tokens
         resolved_key = api_key or os.getenv("ANTHROPIC_API_KEY")
@@ -204,26 +175,7 @@ class MCPGenerator:
         seed_server_id: str | None = None,
         match_type: RegistryMatchType = RegistryMatchType.FULL_GENERATION,
     ) -> GenerationResult:
-        """Generate a complete MCP server from a natural language description.
 
-        This is the primary entry point for server generation. Depending on the
-        ``match_type``, the generation will either adapt an existing server,
-        use one as a few-shot seed, or start from scratch.
-
-        Args:
-            description: Plain English description of the server's purpose.
-            seed_server_code: Source code of a similar server from registry.
-            seed_server_id: Registry ID of the seed server, for audit trail.
-            match_type: Registry resolution type (ADAPT/SEED/FULL_GENERATION).
-
-        Returns:
-            GenerationResult containing source code, tool/resource specs,
-            timing info, and token usage metrics.
-
-        Raises:
-            anthropic.APIError: If the Anthropic API call fails.
-            ValueError: If the model response cannot be parsed.
-        """
         logger.info(
             "Starting generation [match_type=%s, description_len=%d]",
             match_type.value,
@@ -263,14 +215,7 @@ class MCPGenerator:
         )
 
     async def _generate_fresh(self, description: str) -> tuple[str, Any]:
-        """Generate a server from scratch without any registry seed.
 
-        Args:
-            description: Plain English description of the server purpose.
-
-        Returns:
-            Tuple of (source_code, usage_object).
-        """
         user_prompt = (
             f"Generate a complete MCP server for the following purpose:\n\n{description}\n\n"
             "Remember to follow all quality requirements in the system prompt."
@@ -305,19 +250,7 @@ class MCPGenerator:
     async def _adapt_server(
         self, description: str, existing_code: str
     ) -> tuple[str, Any]:
-        """Adapt an existing server to a new but similar purpose.
 
-        When registry similarity > 0.85, full regeneration is wasteful.
-        This method asks the model to minimally modify an existing server
-        to match the new description, preserving all validated patterns.
-
-        Args:
-            description: New purpose description.
-            existing_code: Existing server code from the registry.
-
-        Returns:
-            Tuple of (source_code, usage_object).
-        """
         user_prompt = (
             f"Here is an existing MCP server:\n\n"
             f"```python\n{existing_code}\n```\n\n"
@@ -327,18 +260,7 @@ class MCPGenerator:
         return await self._call_api(_ADAPT_SYSTEM_PROMPT, user_prompt)
 
     async def _call_api(self, system_prompt: str, user_prompt: str) -> tuple[str, Any]:
-        """Make an Anthropic API call and extract the code block from the response.
 
-        Args:
-            system_prompt: System-level instructions for the model.
-            user_prompt: User message with the generation request.
-
-        Returns:
-            Tuple of (extracted_source_code, usage_object).
-
-        Raises:
-            ValueError: If no code block delimiters are found in the response.
-        """
         response = self.client.messages.create(
             model=self.model,
             max_tokens=self.max_tokens,
@@ -349,31 +271,8 @@ class MCPGenerator:
         source_code = _extract_code_block(raw_text)
         return source_code, response.usage
 
-
-# ---------------------------------------------------------------------------
-# Parsing Helpers
-# ---------------------------------------------------------------------------
-
-
 def _extract_code_block(response_text: str) -> str:
-    """Extract Python source code from a model response with delimiters.
 
-    Attempts multiple extraction strategies in order:
-    1. Explicit <CODE_START> / <CODE_END> delimiters (preferred).
-    2. Markdown python code fences (```python ... ```).
-    3. Any markdown code fence (``` ... ```).
-    4. The entire response text as fallback.
-
-    Args:
-        response_text: Raw text response from the Anthropic API.
-
-    Returns:
-        Cleaned Python source code string.
-
-    Raises:
-        ValueError: If no recognizable code block is found and the text
-            does not appear to be valid Python.
-    """
     # Strategy 1: explicit delimiters
     match = re.search(r"<CODE_START>\s*(.*?)\s*<CODE_END>", response_text, re.DOTALL)
     if match:
@@ -403,18 +302,7 @@ def _extract_code_block(response_text: str) -> str:
 
 
 def _extract_tool_specs(source_code: str) -> list[ToolSpec]:
-    """Extract MCP tool specifications from generated Python source code using AST.
 
-    Parses the source code's abstract syntax tree to find tool definitions
-    indicated by ``@server.list_tools()`` and ``@server.call_tool()`` decorators,
-    then reconstructs ToolSpec objects from the function signatures and docstrings.
-
-    Args:
-        source_code: Python source code of a generated MCP server.
-
-    Returns:
-        List of ToolSpec objects for each discovered tool handler.
-    """
     specs: list[ToolSpec] = []
     try:
         tree = ast.parse(source_code)
@@ -463,14 +351,7 @@ def _extract_tool_specs(source_code: str) -> list[ToolSpec]:
 
 
 def _extract_resource_specs(source_code: str) -> list[ResourceSpec]:
-    """Extract MCP resource specifications from generated Python source code.
 
-    Args:
-        source_code: Python source code of a generated MCP server.
-
-    Returns:
-        List of ResourceSpec objects for each discovered resource handler.
-    """
     specs: list[ResourceSpec] = []
     try:
         tree = ast.parse(source_code)
@@ -497,15 +378,7 @@ def _extract_resource_specs(source_code: str) -> list[ResourceSpec]:
 
 
 def _decorator_matches(decorator: ast.expr, names: list[str]) -> bool:
-    """Check if an AST decorator node matches any of the given names.
 
-    Args:
-        decorator: AST expression node representing a decorator.
-        names: List of function/method names to match against.
-
-    Returns:
-        True if the decorator matches any name in the list.
-    """
     if isinstance(decorator, ast.Call):
         func = decorator.func
         if isinstance(func, ast.Attribute):
@@ -518,18 +391,7 @@ def _decorator_matches(decorator: ast.expr, names: list[str]) -> bool:
 
 
 def _find_tool_names_from_ast(tree: ast.Module, source_code: str) -> list[str]:
-    """Extract tool names from the list_tools handler in the AST.
 
-    Looks for functions decorated with @server.list_tools() and extracts
-    the ``name`` fields from ``types.Tool(name=...)`` constructor calls.
-
-    Args:
-        tree: Parsed AST module.
-        source_code: Original source code (for fallback regex).
-
-    Returns:
-        List of tool name strings found in the list_tools handler.
-    """
     names: list[str] = []
 
     # AST approach: find Tool(name=...) calls
