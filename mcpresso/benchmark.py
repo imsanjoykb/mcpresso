@@ -1,34 +1,3 @@
-"""MCPresso Benchmark Harness — Empirical Evaluation Suite.
-
-This module implements the benchmark harness that runs MCPresso against a
-curated suite of 20 diverse NL descriptions to produce the empirical metrics
-reported in the paper's evaluation section.
-
-Design Decision (for paper):
-    The benchmark suite is designed to cover a stratified sample of server types:
-    - Simple single-tool servers (baseline difficulty)
-    - Multi-tool servers with dependencies (moderate difficulty)
-    - Security-sensitive servers handling auth/credentials (high difficulty)
-    - External API integration servers (moderate-high difficulty)
-    - Database-facing servers requiring parameterized queries (high difficulty)
-
-    This stratification enables reporting of metric distributions across
-    difficulty tiers, not just aggregate means — a stronger empirical claim.
-
-Metrics reported:
-    1. Generation latency (P50, P95 across all cases)
-    2. Validation score distribution per category
-    3. Repair convergence rate (% reaching STAGING_READY after ≤ 3 repairs)
-    4. Token efficiency (tokens per successful generation)
-    5. Security issue detection rate (against known-bad patterns)
-    6. Registry reuse rate (% using ADAPT or SEED)
-    7. Test coverage rate (average estimated coverage, if testgen enabled)
-
-Output format:
-    JSON report suitable for inclusion in paper tables and figures.
-    Each run is timestamped and identified by a run UUID for reproducibility.
-"""
-
 from __future__ import annotations
 
 import json
@@ -51,10 +20,6 @@ from mcpresso.models import (
 from mcpresso.pipeline import MCPressoPipeline
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Benchmark Suite Definition (20 diverse cases)
-# ---------------------------------------------------------------------------
 
 BENCHMARK_CASES: list[BenchmarkCase] = [
     # --- Simple Tools (5 cases) ---
@@ -223,11 +188,6 @@ BENCHMARK_CASES: list[BenchmarkCase] = [
         notes="Crypto operations. Token expiry. No hardcoded secrets or private keys.",
     ),
 ]
-
-# ---------------------------------------------------------------------------
-# Benchmark Runner
-# ---------------------------------------------------------------------------
-
 
 class MCPressoBenchmark:
     """Benchmark harness for empirical evaluation of the MCPresso pipeline.
@@ -452,12 +412,6 @@ class MCPressoBenchmark:
             )
         print("=" * 70)
 
-
-# ---------------------------------------------------------------------------
-# Report Computation
-# ---------------------------------------------------------------------------
-
-
 def _compute_report(
     case_results: list[BenchmarkCaseResult],
     run_timestamp: datetime,
@@ -567,7 +521,6 @@ def _compute_report(
         run_timestamp=run_timestamp,
         run_duration_ms=run_duration_ms,
     )
-
 
 def _serialize_report(report: BenchmarkReport) -> dict:
     """Serialize BenchmarkReport to a JSON-compatible dict.
