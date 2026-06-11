@@ -47,10 +47,6 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
 DEFAULT_MODEL = "claude-sonnet-4-20250514"
 DEFAULT_MAX_TOKENS = 8192
 MAX_REPAIR_ITERATIONS = 3
@@ -86,12 +82,6 @@ After the closing delimiter, add a brief JSON audit block listing what you chang
 
 Be precise. Do not hallucinate issue IDs — only reference the exact IDs provided.
 """
-
-
-# ---------------------------------------------------------------------------
-# Repair Engine Class
-# ---------------------------------------------------------------------------
-
 
 class MCPRepairEngine:
     """Intelligent auto-repair engine for generated MCP servers.
@@ -278,19 +268,6 @@ class MCPRepairEngine:
         source_code: str,
         issues: list[Issue],
     ) -> tuple[str, list[FixRecord]]:
-        """Perform a single repair iteration.
-
-        Builds a structured repair prompt listing all issues to fix,
-        calls the Claude API, extracts the repaired code and change log,
-        and returns both for audit recording.
-
-        Args:
-            source_code: Current source code to repair.
-            issues: List of issues that must be fixed in this iteration.
-
-        Returns:
-            Tuple of (repaired_source_code, list_of_fix_records).
-        """
         prompt = _build_repair_prompt(source_code, issues)
 
         try:
@@ -314,12 +291,6 @@ class MCPRepairEngine:
         fix_records = _extract_fix_records(raw_text, issues)
 
         return repaired_code, fix_records
-
-
-# ---------------------------------------------------------------------------
-# Prompt Building
-# ---------------------------------------------------------------------------
-
 
 def _build_repair_prompt(source_code: str, issues: list[Issue]) -> str:
     """Build a structured repair prompt listing all issues to fix.
@@ -356,27 +327,8 @@ def _build_repair_prompt(source_code: str, issues: list[Issue]) -> str:
         f"Fix ALL listed issues. Return the complete repaired code and change log."
     )
 
-
-# ---------------------------------------------------------------------------
-# Response Parsing
-# ---------------------------------------------------------------------------
-
-
 def _extract_repaired_code(response_text: str, fallback: str) -> str:
-    """Extract repaired source code from the repair API response.
-
-    Looks for content between <REPAIRED_START> and <REPAIRED_END> delimiters.
-    Falls back to markdown code fences, then returns the original code unchanged.
-
-    Args:
-        response_text: Raw API response text.
-        fallback: Original source code to return if extraction fails.
-
-    Returns:
-        Extracted repaired Python source code.
-    """
     import re
-
     # Strategy 1: explicit delimiters
     match = re.search(r"<REPAIRED_START>\s*(.*?)\s*<REPAIRED_END>", response_text, re.DOTALL)
     if match:
@@ -402,18 +354,6 @@ def _extract_repaired_code(response_text: str, fallback: str) -> str:
 
 
 def _extract_fix_records(response_text: str, issues: list[Issue]) -> list[FixRecord]:
-    """Extract fix audit records from the repair API response.
-
-    Parses the <CHANGES_START> / <CHANGES_END> JSON block from the response.
-    Falls back to creating minimal records from issue descriptions if parsing fails.
-
-    Args:
-        response_text: Raw API response text.
-        issues: Original issues submitted for repair (used as fallback).
-
-    Returns:
-        List of FixRecord objects representing applied changes.
-    """
     import json
     import re
 
@@ -451,39 +391,12 @@ def _extract_fix_records(response_text: str, issues: list[Issue]) -> list[FixRec
 
 
 def _get_issue_category(issue_id: str, issues: list[Issue]) -> str:
-    """Look up category for a given issue ID.
-
-    Args:
-        issue_id: Issue identifier to look up.
-        issues: List of issues to search.
-
-    Returns:
-        Category string if found, else 'unknown'.
-    """
     for issue in issues:
         if issue.id == issue_id:
             return issue.category
     return "unknown"
 
-
-# ---------------------------------------------------------------------------
-# Human-Readable Fix Suggestions (for issues that couldn't be auto-fixed)
-# ---------------------------------------------------------------------------
-
-
 def format_remaining_issues(repair_result: RepairResult) -> str:
-    """Format unresolved issues as a human-readable remediation guide.
-
-    Called when the repair engine exhausts its iterations and the code
-    still has unresolved issues. Provides actionable guidance for manual
-    intervention.
-
-    Args:
-        repair_result: The completed (but potentially unsuccessful) repair result.
-
-    Returns:
-        Formatted multi-line string with issue-by-issue remediation guidance.
-    """
     if not repair_result.remaining_issues:
         return "✅ All issues resolved successfully."
 
