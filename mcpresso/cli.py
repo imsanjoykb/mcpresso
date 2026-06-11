@@ -49,12 +49,7 @@ from rich.progress import (
 )
 from rich.table import Table
 from rich.text import Text
-
 from mcpresso import __version__, __tagline__
-
-# ---------------------------------------------------------------------------
-# App Setup
-# ---------------------------------------------------------------------------
 
 app = typer.Typer(
     name="mcpresso",
@@ -74,28 +69,14 @@ app.add_typer(registry_app, name="registry")
 console = Console()
 error_console = Console(stderr=True, style="bold red")
 
-# ---------------------------------------------------------------------------
-# Logging Setup
-# ---------------------------------------------------------------------------
-
 logging.basicConfig(
     level=os.getenv("MCPRESSO_LOG_LEVEL", "WARNING"),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
-# ---------------------------------------------------------------------------
-# Shared Options
-# ---------------------------------------------------------------------------
-
 _verbose_option = typer.Option(False, "--verbose", "-v", help="Enable verbose output.")
 _output_option = typer.Option(None, "--output", "-o", help="Output file path.")
 _api_key_option = typer.Option(None, "--api-key", help="Anthropic API key (overrides env var).")
-
-
-# ---------------------------------------------------------------------------
-# Brew Command
-# ---------------------------------------------------------------------------
-
 
 @app.command()
 def brew(
@@ -174,12 +155,6 @@ def brew(
     if brew_result:
         _print_brew_scorecard(brew_result, output, with_tests, with_client, verbose)
 
-
-# ---------------------------------------------------------------------------
-# Validate Command
-# ---------------------------------------------------------------------------
-
-
 @app.command()
 def validate(
     file: str = typer.Argument(..., help="Path to the MCP server Python file to validate."),
@@ -214,12 +189,6 @@ def validate(
     if not result.execution_ready:
         raise typer.Exit(code=2)
 
-
-# ---------------------------------------------------------------------------
-# Taste Command (alias for validate)
-# ---------------------------------------------------------------------------
-
-
 @app.command()
 def taste(
     file: str = typer.Argument(..., help="Path to the MCP server Python file to taste-test."),
@@ -233,12 +202,6 @@ def taste(
         mcpresso taste server.py
     """
     validate(file=file, report=report, verbose=verbose)
-
-
-# ---------------------------------------------------------------------------
-# Repair Command
-# ---------------------------------------------------------------------------
-
 
 @app.command()
 def repair(
@@ -289,12 +252,6 @@ def repair(
         console.print("\n[bold]Fixes Applied:[/bold]")
         for i, fix in enumerate(result.fixes_applied, 1):
             console.print(f"  {i}. [{fix.category}] {fix.description}")
-
-
-# ---------------------------------------------------------------------------
-# TestGen Command
-# ---------------------------------------------------------------------------
-
 
 @app.command()
 def testgen(
@@ -353,12 +310,6 @@ def testgen(
     console.print(f"   Security tests: [bold]{result.security_tests}[/bold]")
     console.print(f"   Est. coverage: [bold]{result.estimated_coverage:.1f}%[/bold]")
 
-
-# ---------------------------------------------------------------------------
-# Version Command
-# ---------------------------------------------------------------------------
-
-
 @app.command()
 def version() -> None:
     """☕ Show MCPresso version and system information."""
@@ -366,12 +317,6 @@ def version() -> None:
     console.print(f"  [bold]Version:[/bold]  {__version__}")
     console.print(f"  [bold]Tagline:[/bold]  {__tagline__}")
     console.print(f"  [bold]Python:[/bold]   {sys.version.split()[0]}")
-
-
-# ---------------------------------------------------------------------------
-# Registry Commands
-# ---------------------------------------------------------------------------
-
 
 @registry_app.command("list")
 def registry_list(
@@ -504,12 +449,6 @@ def registry_stats() -> None:
             panel_content += f"  {tier}: {count}\n"
 
     console.print(Panel(panel_content, title="☕ Registry Statistics", border_style="cyan"))
-
-
-# ---------------------------------------------------------------------------
-# Rich Output Helpers
-# ---------------------------------------------------------------------------
-
 
 def _print_banner() -> None:
     """Print the MCPresso ASCII art banner."""
@@ -785,13 +724,7 @@ def _print_validation_json(result: "ValidationReport") -> None:
         ],
     }
     rprint(json.dumps(output, indent=2))
-
-
-# ---------------------------------------------------------------------------
-# Entry Point
-# ---------------------------------------------------------------------------
-
-
+    
 def main() -> None:
     """Entry point for the mcpresso CLI.
 
