@@ -55,10 +55,6 @@ from mcpresso.models import (
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
 DEFAULT_REGISTRY_DIR = Path.home() / ".mcpresso" / "registry"
 ADAPT_THRESHOLD = 0.85   # similarity > this → ADAPT mode
 SEED_THRESHOLD = 0.60    # similarity > this → SEED mode (else FULL_GENERATION)
@@ -68,34 +64,7 @@ INDEX_FILE = "registry_index.json"
 _EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
 _embedding_model = None  # lazy singleton
 
-
-# ---------------------------------------------------------------------------
-# Registry Class
-# ---------------------------------------------------------------------------
-
-
 class MCPRegistry:
-    """Persistent semantic registry for successfully brewed MCP servers.
-
-    Stores server code, metadata, and dense embeddings. On each new brew
-    request, performs cosine similarity search to determine whether to
-    adapt, seed, or regenerate from scratch.
-
-    Attributes:
-        registry_dir: Path to the local registry directory.
-        adapt_threshold: Cosine similarity threshold for ADAPT mode.
-        seed_threshold: Cosine similarity threshold for SEED mode.
-
-    Example:
-        >>> registry = MCPRegistry()
-        >>> result = registry.search("A server that queries PostgreSQL")
-        >>> if result:
-        ...     print(f"Match: {result.similarity:.3f} → {result.match_type.value}")
-
-        >>> registry.save(entry)
-        >>> entries = registry.list_all()
-        >>> print(f"Registry size: {len(entries)} entries")
-    """
 
     def __init__(
         self,
@@ -128,24 +97,8 @@ class MCPRegistry:
         self.registry_dir.mkdir(parents=True, exist_ok=True)
         logger.info("MCPRegistry initialized [dir=%s]", self.registry_dir)
 
-    # ------------------------------------------------------------------
-    # Core Operations
-    # ------------------------------------------------------------------
 
     def search(self, description: str) -> RegistrySearchResult | None:
-        """Search the registry for the most semantically similar entry.
-
-        Computes a dense embedding of the input description and finds the
-        registry entry with highest cosine similarity. Returns None if the
-        registry is empty.
-
-        Args:
-            description: Natural language description of the desired server.
-
-        Returns:
-            RegistrySearchResult with the best match and its match type,
-            or None if the registry is empty or no match exceeds seed_threshold.
-        """
         entries = self.list_all()
         if not entries:
             logger.debug("Registry is empty; no search performed.")
@@ -184,13 +137,7 @@ class MCPRegistry:
         )
 
     def save(self, entry: RegistryEntry) -> None:
-        """Persist a registry entry to disk.
 
-        Writes the entry as a JSON file and updates the registry index.
-
-        Args:
-            entry: RegistryEntry to persist.
-        """
         entry_path = self.registry_dir / f"{entry.id}.json"
         entry_dict = _serialize_entry(entry)
 
@@ -201,14 +148,6 @@ class MCPRegistry:
         logger.info("Saved registry entry [id=%s, score=%.1f]", entry.id[:8], entry.validation_score)
 
     def get(self, entry_id: str) -> RegistryEntry | None:
-        """Retrieve a specific registry entry by ID.
-
-        Args:
-            entry_id: UUID string of the registry entry.
-
-        Returns:
-            RegistryEntry if found, else None.
-        """
         entry_path = self.registry_dir / f"{entry_id}.json"
         if not entry_path.exists():
             logger.warning("Registry entry not found: %s", entry_id)
@@ -216,11 +155,6 @@ class MCPRegistry:
         return _load_entry(entry_path)
 
     def list_all(self) -> list[RegistryEntry]:
-        """List all registry entries sorted by creation date (newest first).
-
-        Returns:
-            List of all RegistryEntry objects in the registry.
-        """
         index = self._load_index()
         entries: list[RegistryEntry] = []
         for entry_id in index.get("entry_ids", []):
@@ -233,14 +167,7 @@ class MCPRegistry:
         return entries
 
     def delete(self, entry_id: str) -> bool:
-        """Delete a registry entry by ID.
 
-        Args:
-            entry_id: UUID string of the entry to delete.
-
-        Returns:
-            True if deleted successfully, False if not found.
-        """
         entry_path = self.registry_dir / f"{entry_id}.json"
         if not entry_path.exists():
             return False
@@ -260,23 +187,6 @@ class MCPRegistry:
         tool_names: list[str] | None = None,
         repair_iterations: int = 0,
     ) -> RegistryEntry:
-        """Create a new RegistryEntry with computed embedding and auto-extracted tags.
-
-        This is a convenience factory method that handles embedding computation
-        and tag extraction automatically.
-
-        Args:
-            description: Original NL description.
-            source_code: Final validated server source code.
-            validation_score: Overall validation score.
-            readiness_tier: Execution readiness tier string.
-            brew_time_ms: Total brew time in milliseconds.
-            tool_names: Names of tools in this server.
-            repair_iterations: Number of repair passes performed.
-
-        Returns:
-            A new RegistryEntry ready to be saved.
-        """
         embedding = _embed(description)
         tags = _extract_tags(description, source_code)
 
@@ -294,19 +204,7 @@ class MCPRegistry:
             repair_iterations=repair_iterations,
         )
 
-    # ------------------------------------------------------------------
-    # Export / Import
-    # ------------------------------------------------------------------
-
     def export(self, output_path: Path | str) -> None:
-        """Export the entire registry to a single JSON file.
-
-        The exported format is suitable for sharing between machines and
-        for use as benchmark datasets in the paper's evaluation section.
-
-        Args:
-            output_path: Path to write the export JSON file.
-        """
         entries = self.list_all()
         export_data = {
             "mcpresso_registry_version": "1.0",
@@ -323,17 +221,6 @@ class MCPRegistry:
         logger.info("Exported %d registry entries to %s", len(entries), output_path)
 
     def import_from(self, input_path: Path | str) -> int:
-        """Import registry entries from an exported JSON file.
-
-        Skips entries that already exist (by ID). Returns the count of
-        newly imported entries.
-
-        Args:
-            input_path: Path to the export JSON file.
-
-        Returns:
-            Number of entries newly imported.
-        """
         input_path = Path(input_path)
         with open(input_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -350,19 +237,7 @@ class MCPRegistry:
         logger.info("Imported %d new entries from %s", imported, input_path)
         return imported
 
-    # ------------------------------------------------------------------
-    # Statistics (for benchmark/paper metrics)
-    # ------------------------------------------------------------------
-
     def stats(self) -> dict[str, object]:
-        """Compute summary statistics for the registry.
-
-        Returns a dict suitable for inclusion in benchmark reports.
-
-        Returns:
-            Dictionary with entry_count, mean_score, tier_distribution,
-            mean_brew_time_ms, and reuse_potential_rate.
-        """
         entries = self.list_all()
         if not entries:
             return {"entry_count": 0}
@@ -384,9 +259,6 @@ class MCPRegistry:
             "total_entries_by_tier": tier_counts,
         }
 
-    # ------------------------------------------------------------------
-    # Index Management
-    # ------------------------------------------------------------------
 
     def _load_index(self) -> dict:
         """Load the registry index from disk.
@@ -438,21 +310,7 @@ class MCPRegistry:
             index["entry_ids"] = ids
             self._save_index(index)
 
-
-# ---------------------------------------------------------------------------
-# Embedding Functions
-# ---------------------------------------------------------------------------
-
-
 def _get_embedding_model():
-    """Lazily load the sentence-transformers embedding model.
-
-    Returns:
-        A SentenceTransformer model instance.
-
-    Raises:
-        ImportError: If sentence-transformers is not installed.
-    """
     global _embedding_model
     if _embedding_model is None:
         try:
@@ -469,18 +327,7 @@ def _get_embedding_model():
 
 
 def _embed(text: str) -> list[float]:
-    """Compute a dense embedding for a text string.
 
-    Uses the sentence-transformers all-MiniLM-L6-v2 model (384 dimensions).
-    Falls back to a zero vector if the model cannot be loaded, allowing
-    basic functionality without the embedding dependency.
-
-    Args:
-        text: Text string to embed.
-
-    Returns:
-        List of floats representing the dense embedding vector.
-    """
     try:
         model = _get_embedding_model()
         embedding = model.encode(text, convert_to_numpy=True)
@@ -493,15 +340,6 @@ def _embed(text: str) -> list[float]:
 
 
 def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-    """Compute cosine similarity between two embedding vectors.
-
-    Args:
-        a: First embedding vector.
-        b: Second embedding vector.
-
-    Returns:
-        Cosine similarity in range [-1.0, 1.0]. Higher is more similar.
-    """
     norm_a = np.linalg.norm(a)
     norm_b = np.linalg.norm(b)
     if norm_a == 0.0 or norm_b == 0.0:
@@ -534,17 +372,6 @@ _TAG_KEYWORDS: dict[str, list[str]] = {
 
 
 def _extract_tags(description: str, source_code: str) -> list[str]:
-    """Auto-extract semantic tags from description and source code.
-
-    Tags enable filtering and categorization of registry entries.
-
-    Args:
-        description: NL description of the server.
-        source_code: Generated server source code.
-
-    Returns:
-        List of tag strings (e.g., ["github", "api", "search"]).
-    """
     combined = (description + " " + source_code).lower()
     tags: list[str] = []
 
@@ -554,27 +381,11 @@ def _extract_tags(description: str, source_code: str) -> list[str]:
 
     return sorted(set(tags))
 
-
-# ---------------------------------------------------------------------------
-# Match Type Resolution
-# ---------------------------------------------------------------------------
-
-
 def _resolve_match_type(
     similarity: float,
     adapt_threshold: float,
     seed_threshold: float,
 ) -> RegistryMatchType:
-    """Determine the registry match type based on cosine similarity.
-
-    Args:
-        similarity: Cosine similarity score [0.0, 1.0].
-        adapt_threshold: Threshold above which ADAPT mode is used.
-        seed_threshold: Threshold above which SEED mode is used.
-
-    Returns:
-        RegistryMatchType indicating how to use the match.
-    """
     if similarity >= adapt_threshold:
         return RegistryMatchType.ADAPT
     elif similarity >= seed_threshold:
@@ -582,21 +393,7 @@ def _resolve_match_type(
     else:
         return RegistryMatchType.FULL_GENERATION
 
-
-# ---------------------------------------------------------------------------
-# Serialization Helpers
-# ---------------------------------------------------------------------------
-
-
 def _serialize_entry(entry: RegistryEntry) -> dict:
-    """Serialize a RegistryEntry to a JSON-compatible dict.
-
-    Args:
-        entry: RegistryEntry to serialize.
-
-    Returns:
-        JSON-serializable dict representation.
-    """
     return {
         "id": entry.id,
         "description": entry.description,
@@ -613,14 +410,6 @@ def _serialize_entry(entry: RegistryEntry) -> dict:
 
 
 def _deserialize_entry(data: dict) -> RegistryEntry:
-    """Deserialize a RegistryEntry from a JSON dict.
-
-    Args:
-        data: Dict loaded from JSON storage.
-
-    Returns:
-        RegistryEntry instance.
-    """
     created_at = data.get("created_at")
     if isinstance(created_at, str):
         try:
@@ -646,14 +435,6 @@ def _deserialize_entry(data: dict) -> RegistryEntry:
 
 
 def _load_entry(path: Path) -> RegistryEntry | None:
-    """Load a RegistryEntry from a JSON file path.
-
-    Args:
-        path: Path to the JSON entry file.
-
-    Returns:
-        Loaded RegistryEntry, or None if loading fails.
-    """
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
