@@ -452,12 +452,23 @@ def registry_stats() -> None:
 
 def _print_banner() -> None:
     """Print the MCPresso ASCII art banner."""
-    banner = """
-[bold cyan]
-    ╔╦╗╔═╗╔═╗╦═╗╔═╗╔═╗╔═╗╔═╗
-    ║║║║  ╠═╝╠╦╝║╣ ╚═╗╚═╗║ ║
-    ╩ ╩╚═╝╩  ╩╚═╚═╝╚═╝╚═╝╚═╝
-[/bold cyan][dim]  Brew your MCP server in under 60 seconds[/dim]
+    banner = r"""
+[bold]
+[dim] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ [/dim]
+
+        [cyan]███╗   ███╗[/cyan][blue] ██████╗[/blue][magenta]██████╗ [/magenta][cyan]██████╗ [/cyan][blue]███████╗[/blue][magenta]███████╗[/magenta][cyan]███████╗[/cyan][blue] ██████╗ [/blue]
+        [cyan]████╗ ████║[/cyan][blue]██╔════╝[/blue][magenta]██╔══██╗[/magenta][cyan]██╔══██╗[/cyan][blue]██╔════╝[/blue][magenta]██╔════╝[/magenta][cyan]██╔════╝[/cyan][blue]██╔═══██╗[/blue]
+        [cyan]██╔████╔██║[/cyan][blue]██║     [/blue][magenta]██████╔╝[/magenta][cyan]██████╔╝[/cyan][blue]█████╗  [/blue][magenta]███████╗[/magenta][cyan]███████╗[/cyan][blue]██║   ██║[/blue]
+        [cyan]██║╚██╔╝██║[/cyan][blue]██║     [/blue][magenta]██╔═══╝ [/magenta][cyan]██╔══██╗[/cyan][blue]██╔══╝  [/blue][magenta]╚════██║[/magenta][cyan]╚════██║[/cyan][blue]██║   ██║[/blue]
+        [cyan]██║ ╚═╝ ██║[/cyan][blue]╚██████╗[/blue][magenta]██║     [/magenta][cyan]██║  ██║[/cyan][blue]███████╗[/blue][magenta]███████║[/magenta][cyan]███████║[/cyan][blue]╚██████╔╝[/blue]
+        [cyan]╚═╝     ╚═╝[/cyan][blue] ╚═════╝[/blue][magenta]╚═╝     [/magenta][cyan]╚═╝  ╚═╝[/cyan][blue]╚══════╝[/blue][magenta]╚══════╝[/magenta][cyan]╚══════╝[/cyan][blue] ╚═════╝ [/blue]
+
+[dim] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ [/dim]
+
+                    [bold magenta]✦[/bold magenta]
+         [bold white]Brew your MCP server in under 60 seconds[/bold white]
+                    [bold magenta]✦[/bold magenta]
+
 """
     console.print(banner)
 
