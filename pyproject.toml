@@ -9,9 +9,9 @@ description = "Brew your MCP server in under 60 seconds"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
-  { name = "MCPresso Team", email = "mcpresso@example.com" }
+  { name = "MCPresso Team", email = "iamsanjoykb@gmail.com" }
 ]
-keywords = ["mcp", "model-context-protocol", "llm", "code-generation", "ai"]
+keywords = ["mcp", "model-context-protocol", "llm", "code-generation", "ai", "automation"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
@@ -20,8 +20,10 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Software Development :: Code Generators",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 requires-python = ">=3.10"
 dependencies = [
@@ -32,8 +34,6 @@ dependencies = [
   "radon>=6.0.1",
   "sentence-transformers>=2.7.0",
   "numpy>=1.26.0",
-  "pytest>=8.0.0",
-  "pytest-asyncio>=0.23.0",
   "python-dotenv>=1.0.0",
 ]
 

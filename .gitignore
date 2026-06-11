@@ -9,6 +9,8 @@
 
 # API keys — never commit!
 .env
+*PUBLISH_TO_PYPI.md
+*token.txt
 *.env
 .env.local
 .env.production
