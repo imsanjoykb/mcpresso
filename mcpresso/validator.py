@@ -45,10 +45,6 @@ from mcpresso.models import (
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Category Weights (must sum to 1.0)
-# ---------------------------------------------------------------------------
-
 CATEGORY_WEIGHTS: dict[str, float] = {
     "structural_integrity": 0.25,
     "protocol_compliance": 0.25,
@@ -59,10 +55,6 @@ CATEGORY_WEIGHTS: dict[str, float] = {
 
 # Threshold for execution readiness
 EXECUTION_READY_THRESHOLD = 75.0
-
-# ---------------------------------------------------------------------------
-# Known security-sensitive patterns
-# ---------------------------------------------------------------------------
 
 _HARDCODED_SECRET_PATTERNS = [
     # API keys, tokens, passwords embedded in string literals
@@ -94,11 +86,6 @@ _MCP_ERROR_CODES = {
     "McpError",
 }
 
-# ---------------------------------------------------------------------------
-# Internal helper
-# ---------------------------------------------------------------------------
-
-
 class _CheckResult(NamedTuple):
     """Internal result of a single validation check.
 
@@ -121,19 +108,6 @@ def _issue(
     snippet: str | None = None,
     fix: str | None = None,
 ) -> Issue:
-    """Create an Issue with a generated unique ID.
-
-    Args:
-        category: Category key string.
-        severity: Issue severity level.
-        message: Human-readable issue description.
-        line_number: Source line where issue was found.
-        snippet: Relevant code snippet.
-        fix: Suggested fix description.
-
-    Returns:
-        A new Issue with a UUID-based ID.
-    """
     return Issue(
         id=str(uuid.uuid4())[:8],
         category=category,
@@ -144,38 +118,9 @@ def _issue(
         fix_suggestion=fix,
     )
 
-
-# ---------------------------------------------------------------------------
-# Validator Class
-# ---------------------------------------------------------------------------
-
-
 class MCPValidator:
-    """5-category quality validation engine for generated MCP servers.
-
-    Runs all five validation categories against a source code string and
-    produces a weighted composite score with per-category breakdowns.
-
-    All validation is static (AST + regex) — no code is executed.
-
-    Example:
-        >>> validator = MCPValidator()
-        >>> report = validator.validate(source_code)
-        >>> print(f"Score: {report.overall_score:.1f} ({report.confidence_level.value})")
-        >>> for issue in report.critical_issues:
-        ...     print(f"  CRITICAL: {issue.message}")
-    """
 
     def validate(self, source_code: str) -> ValidationReport:
-        """Run all five validation categories and produce a complete report.
-
-        Args:
-            source_code: Python source code of the MCP server to validate.
-
-        Returns:
-            ValidationReport with per-category scores, all found issues,
-            overall weighted score, and execution readiness determination.
-        """
         start_time = time.monotonic()
         source_hash = hashlib.sha256(source_code.encode()).hexdigest()
 
@@ -252,11 +197,7 @@ class MCPValidator:
             validation_time_ms=elapsed_ms,
             source_code_hash=source_hash,
         )
-
-    # ------------------------------------------------------------------
-    # Category 1: Structural Integrity
-    # ------------------------------------------------------------------
-
+    
     def _check_structural_integrity(
         self,
         source_code: str,
@@ -264,26 +205,6 @@ class MCPValidator:
         parse_error: SyntaxError | None,
         lines: list[str],
     ) -> CategoryResult:
-        """Validate syntactic and structural correctness of the MCP server.
-
-        Checks:
-        - Valid Python syntax (ast.parse succeeds).
-        - MCP SDK imports present (mcp.server, mcp.types, etc.).
-        - Server object instantiated (Server("name")).
-        - @server.list_tools() handler present.
-        - @server.call_tool() handler present.
-        - if __name__ == "__main__" entrypoint present.
-        - main() function with asyncio.run() present.
-
-        Args:
-            source_code: Raw source code string.
-            tree: Pre-parsed AST module, or None if parse failed.
-            parse_error: SyntaxError if parse failed, else None.
-            lines: Source lines list.
-
-        Returns:
-            CategoryResult with score and all findings.
-        """
         cat = "structural_integrity"
         checks: list[_CheckResult] = []
 
@@ -385,33 +306,12 @@ class MCPValidator:
             "Structural Integrity", cat, checks, CATEGORY_WEIGHTS[cat]
         )
 
-    # ------------------------------------------------------------------
-    # Category 2: Protocol Compliance
-    # ------------------------------------------------------------------
-
     def _check_protocol_compliance(
         self,
         source_code: str,
         tree: ast.Module | None,
         lines: list[str],
     ) -> CategoryResult:
-        """Validate compliance with the MCP protocol specification.
-
-        Checks:
-        - Tools have name, description, inputSchema.
-        - Return types are MCP-compliant (TextContent, etc.).
-        - Async/await used throughout handlers.
-        - McpError used for error responses.
-        - stdio_server used for transport.
-
-        Args:
-            source_code: Raw source code string.
-            tree: Pre-parsed AST module (may be None).
-            lines: Source lines list.
-
-        Returns:
-            CategoryResult with score and all findings.
-        """
         cat = "protocol_compliance"
         checks: list[_CheckResult] = []
 
@@ -519,34 +419,12 @@ class MCPValidator:
             "Protocol Compliance", cat, checks, CATEGORY_WEIGHTS[cat]
         )
 
-    # ------------------------------------------------------------------
-    # Category 3: Security Posture
-    # ------------------------------------------------------------------
-
     def _check_security_posture(
         self,
         source_code: str,
         tree: ast.Module | None,
         lines: list[str],
     ) -> CategoryResult:
-        """Validate security characteristics of the generated server.
-
-        Checks:
-        - No hardcoded secrets or API keys.
-        - No use of eval(), exec() with untrusted input.
-        - Environment variables used for credentials.
-        - No path traversal vulnerabilities.
-        - No subprocess without sanitization.
-        - Input validation present for tool parameters.
-
-        Args:
-            source_code: Raw source code string.
-            tree: Pre-parsed AST module (may be None).
-            lines: Source lines list.
-
-        Returns:
-            CategoryResult with score and all findings.
-        """
         cat = "security_posture"
         checks: list[_CheckResult] = []
 
@@ -681,33 +559,12 @@ class MCPValidator:
             "Security Posture", cat, checks, CATEGORY_WEIGHTS[cat]
         )
 
-    # ------------------------------------------------------------------
-    # Category 4: Robustness & Reliability
-    # ------------------------------------------------------------------
-
     def _check_robustness(
         self,
         source_code: str,
         tree: ast.Module | None,
         lines: list[str],
     ) -> CategoryResult:
-        """Validate error handling and reliability patterns.
-
-        Checks:
-        - Try/except blocks around external calls.
-        - No bare except clauses.
-        - Timeout handling for network operations.
-        - Context managers used for resources.
-        - Graceful error responses (not crashing the server).
-
-        Args:
-            source_code: Raw source code string.
-            tree: Pre-parsed AST module (may be None).
-            lines: Source lines list.
-
-        Returns:
-            CategoryResult with score and all findings.
-        """
         cat = "robustness"
         checks: list[_CheckResult] = []
 
@@ -816,33 +673,12 @@ class MCPValidator:
             "Robustness & Reliability", cat, checks, CATEGORY_WEIGHTS[cat]
         )
 
-    # ------------------------------------------------------------------
-    # Category 5: Documentation & Observability
-    # ------------------------------------------------------------------
-
     def _check_documentation(
         self,
         source_code: str,
         tree: ast.Module | None,
         lines: list[str],
     ) -> CategoryResult:
-        """Validate documentation completeness and observability instrumentation.
-
-        Checks:
-        - Module-level docstring present.
-        - Docstrings on all async functions (tool/resource handlers).
-        - Type hints on all function signatures.
-        - Logging module imported and used.
-        - Tool descriptions are human-readable.
-
-        Args:
-            source_code: Raw source code string.
-            tree: Pre-parsed AST module (may be None).
-            lines: Source lines list.
-
-        Returns:
-            CategoryResult with score and all findings.
-        """
         cat = "documentation"
         checks: list[_CheckResult] = []
 
@@ -942,32 +778,12 @@ class MCPValidator:
             "Documentation & Observability", cat, checks, CATEGORY_WEIGHTS[cat]
         )
 
-
-# ---------------------------------------------------------------------------
-# Scoring Helpers
-# ---------------------------------------------------------------------------
-
-
 def _build_category_result(
     display_name: str,
     key: str,
     checks: list[_CheckResult],
     weight: float,
 ) -> CategoryResult:
-    """Compute a CategoryResult from a list of check results.
-
-    Each passed check contributes equally to the category score.
-    Critical issues impose an additional penalty beyond the base check failure.
-
-    Args:
-        display_name: Human-readable category name.
-        key: Category key matching CATEGORY_WEIGHTS.
-        checks: List of individual check results.
-        weight: Relative weight of this category in the overall score.
-
-    Returns:
-        CategoryResult with computed score and grouped issues.
-    """
     if not checks:
         return CategoryResult(
             name=display_name,
@@ -999,22 +815,7 @@ def _build_category_result(
         failed_checks=[c.name for c in failed],
     )
 
-
-# ---------------------------------------------------------------------------
-# AST Utility Helpers
-# ---------------------------------------------------------------------------
-
-
 def _has_import(tree: ast.Module, module_prefixes: list[str]) -> bool:
-    """Check if any of the given module prefixes are imported in the AST.
-
-    Args:
-        tree: Parsed AST module.
-        module_prefixes: List of module name prefixes to search for.
-
-    Returns:
-        True if any matching import is found.
-    """
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -1029,17 +830,6 @@ def _has_import(tree: ast.Module, module_prefixes: list[str]) -> bool:
 
 
 def _has_server_instantiation(source_code: str, tree: ast.Module) -> bool:
-    """Check for MCP Server() instantiation in the source.
-
-    Looks for patterns like: server = Server("name") or mcp_server = Server(...)
-
-    Args:
-        source_code: Raw source code string.
-        tree: Parsed AST module.
-
-    Returns:
-        True if a Server() call is detected.
-    """
     # Quick regex check first
     if re.search(r'\bServer\s*\(', source_code):
         return True
@@ -1054,19 +844,7 @@ def _has_server_instantiation(source_code: str, tree: ast.Module) -> bool:
                 return True
     return False
 
-
 def _has_decorator(tree: ast.Module, decorator_name: str) -> bool:
-    """Check if any function in the AST has a decorator matching the given name.
-
-    Handles both @server.decorator() and @decorator() forms.
-
-    Args:
-        tree: Parsed AST module.
-        decorator_name: Name of the decorator attribute to look for.
-
-    Returns:
-        True if a matching decorator is found.
-    """
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             for dec in node.decorator_list:

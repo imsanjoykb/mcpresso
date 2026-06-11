@@ -54,10 +54,6 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
 DEFAULT_MODEL = "claude-sonnet-4-20250514"
 DEFAULT_MAX_TOKENS = 8192
 
@@ -104,33 +100,7 @@ Do not include explanation outside the delimiters.
 The test file must be immediately runnable with `pytest test_<name>.py`.
 """
 
-
-# ---------------------------------------------------------------------------
-# Test Generator Class
-# ---------------------------------------------------------------------------
-
-
 class MCPTestGenerator:
-    """Automatic pytest test suite generator for MCP servers.
-
-    Generates three test categories per tool: happy path, edge case,
-    and security boundary tests. Uses Claude to produce realistic,
-    runnable test code with appropriate mocking of external dependencies.
-
-    Attributes:
-        model: Anthropic model identifier.
-        max_tokens: Maximum completion tokens.
-        client: Anthropic API client.
-
-    Example:
-        >>> gen = MCPTestGenerator()
-        >>> result = gen.generate(
-        ...     source_code=server_code,
-        ...     tool_definitions=tools,
-        ...     server_name="github_server",
-        ... )
-        >>> print(f"Generated {result.test_count} tests for {len(result.tools_covered)} tools")
-    """
 
     def __init__(
         self,
@@ -166,21 +136,7 @@ class MCPTestGenerator:
         tool_definitions: list[ToolSpec],
         server_name: str = "mcp_server",
     ) -> TestGenResult:
-        """Generate a complete pytest test suite for an MCP server.
 
-        Args:
-            source_code: Python source code of the MCP server to test.
-            tool_definitions: Tool specifications extracted from the server.
-            server_name: Name used for the server module import in tests.
-                         Defaults to 'mcp_server'.
-
-        Returns:
-            TestGenResult with the complete test file, test counts,
-            coverage estimate, and security test count.
-
-        Raises:
-            anthropic.APIError: If the API call fails.
-        """
         start_time = time.monotonic()
         logger.info(
             "Starting test generation [tools=%d, server_name=%s]",
@@ -237,27 +193,11 @@ class MCPTestGenerator:
             model_used=self.model,
         )
 
-
-# ---------------------------------------------------------------------------
-# Prompt Building
-# ---------------------------------------------------------------------------
-
-
 def _build_testgen_prompt(
     source_code: str,
     tool_definitions: list[ToolSpec],
     server_name: str,
 ) -> str:
-    """Build the test generation prompt.
-
-    Args:
-        source_code: MCP server source code.
-        tool_definitions: Tool specifications.
-        server_name: Module name for imports.
-
-    Returns:
-        Formatted prompt string.
-    """
     tools_summary = []
     for tool in tool_definitions:
         schema_str = str(tool.input_schema) if tool.input_schema else "{}"
@@ -286,14 +226,6 @@ def _build_testgen_prompt(
 
 
 def _extract_test_content(response_text: str) -> str:
-    """Extract test file content from the generation response.
-
-    Args:
-        response_text: Raw API response text.
-
-    Returns:
-        Extracted test file content string.
-    """
     # Strategy 1: explicit delimiters
     match = re.search(r"<TESTS_START>\s*(.*?)\s*<TESTS_END>", response_text, re.DOTALL)
     if match:
@@ -317,21 +249,7 @@ def _extract_test_content(response_text: str) -> str:
     logger.warning("Could not extract test content; using raw response.")
     return response_text.strip()
 
-
-# ---------------------------------------------------------------------------
-# Analysis Helpers
-# ---------------------------------------------------------------------------
-
-
 def _count_test_functions(test_file: str) -> int:
-    """Count the number of test functions in the generated test file.
-
-    Args:
-        test_file: Generated test file content.
-
-    Returns:
-        Number of functions starting with 'test_'.
-    """
     try:
         tree = ast.parse(test_file)
         return sum(
@@ -343,19 +261,9 @@ def _count_test_functions(test_file: str) -> int:
         # Fallback: regex count
         return len(re.findall(r"^\s*(?:async\s+)?def\s+test_", test_file, re.MULTILINE))
 
-
 def _extract_covered_tools(
     test_file: str, tool_definitions: list[ToolSpec]
 ) -> list[str]:
-    """Extract tool names that have corresponding tests in the test file.
-
-    Args:
-        test_file: Generated test file content.
-        tool_definitions: Original tool definitions.
-
-    Returns:
-        List of tool names with at least one test.
-    """
     covered = []
     for tool in tool_definitions:
         # A tool is covered if its name appears in a test function name
@@ -369,39 +277,14 @@ def _extract_covered_tools(
 
 
 def _count_security_tests(test_file: str) -> int:
-    """Count security boundary tests in the generated test file.
 
-    Args:
-        test_file: Generated test file content.
-
-    Returns:
-        Number of functions with 'security' in their name.
-    """
     return len(re.findall(
         r"^\s*(?:async\s+)?def\s+test_\w+_security\b",
         test_file,
         re.MULTILINE
     ))
 
-
 def _estimate_coverage(source_code: str, test_file: str) -> float:
-    """Estimate test coverage statically from branch analysis.
-
-    Estimates the percentage of source code branches that are likely
-    covered by the generated test suite. Uses a heuristic approach:
-    1. Count total branches in source (if/for/while/try/except).
-    2. Count references to source functions in test file.
-    3. Estimate coverage based on ratio and test types.
-
-    This is a static approximation — actual coverage requires execution.
-
-    Args:
-        source_code: MCP server source code.
-        test_file: Generated test file content.
-
-    Returns:
-        Estimated coverage percentage (0.0–100.0).
-    """
     try:
         src_tree = ast.parse(source_code)
     except SyntaxError:
@@ -437,14 +320,6 @@ def _estimate_coverage(source_code: str, test_file: str) -> float:
 
 
 def _infer_tools_from_source(source_code: str) -> list[ToolSpec]:
-    """Infer tool definitions from source code when none are provided.
-
-    Args:
-        source_code: MCP server Python source code.
-
-    Returns:
-        List of inferred ToolSpec objects.
-    """
     specs: list[ToolSpec] = []
 
     try:
