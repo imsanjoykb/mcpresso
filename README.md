@@ -156,6 +156,61 @@ mcpresso brew "A Slack notification server" --verbose
 mcpresso brew "A database query server" --api-key sk-ant-xxxx
 ```
 
+### repair
+
+Auto-repair critical issues in an existing server file (up to 3 LLM iterations).
+
+```bash
+# Repair in-place (overwrites the file)
+mcpresso repair broken_server.py
+
+# Repair to a new file
+mcpresso repair broken_server.py --output fixed_server.py
+
+# Verbose: show each fix applied
+mcpresso repair broken_server.py --verbose
+```
+
+### testgen
+
+Generate a pytest test suite for an existing MCP server.
+
+```bash
+# Auto-detect output path (creates test_<filename>.py)
+mcpresso testgen calc_server.py
+# Output: test_calc_server.py
+
+# Specify output path
+mcpresso testgen todo_server.py --output tests/test_todo.py
+
+# Generate and run the tests
+mcpresso testgen calc_server.py
+pytest test_calc_server.py -v
+```
+
+### registry
+
+Manage the local server template registry (`~/.mcpresso/registry/`).
+
+```bash
+# List all previously brewed servers
+mcpresso registry list
+
+# Show more entries
+mcpresso registry list --limit 50
+
+# Semantic similarity search
+mcpresso registry search "github issues"
+mcpresso registry search "database query"
+mcpresso registry search "todo list management"
+
+# Show registry statistics
+mcpresso registry stats
+
+# Export entire registry to JSON (for sharing or paper benchmarks)
+mcpresso registry export registry_export.json
+```
+
 ### Python API
 
 ```python
@@ -241,6 +296,58 @@ mcpresso registry list [--limit N]
 mcpresso registry search "query"
 mcpresso registry export output.json
 mcpresso registry stats
+```
+
+## Sample Brew Queries
+
+Copy any of these directly into `mcpresso brew "..."`:
+
+### Simple / Quick (~20–40s)
+```bash
+mcpresso brew "A calculator server with add, subtract, multiply, and divide" \
+    --output calc_server.py --with-client
+
+mcpresso brew "A server that converts temperatures between Celsius and Fahrenheit" \
+    --output temp_server.py --with-client
+
+mcpresso brew "A server that returns the current UTC time and converts Unix timestamps" \
+    --output time_server.py --with-client
+
+mcpresso brew "A text utilities server with word count, character count, and reverse string" \
+    --output text_server.py --with-client
+```
+
+### Medium Complexity (~40–60s)
+```bash
+mcpresso brew "A todo list server with create, list, complete, delete, and update tools" \
+    --output todo_server.py --with-client
+
+mcpresso brew "A file system server that reads, writes, lists, and deletes files safely" \
+    --output fs_server.py --with-client
+
+mcpresso brew "A JSON validator and formatter server with schema validation support" \
+    --output json_server.py --with-client
+
+mcpresso brew "A URL utilities server that validates URLs, extracts domains, and checks redirects" \
+    --output url_server.py --with-client
+```
+
+### Advanced / Multi-Tool (~50–90s)
+```bash
+mcpresso brew "A GitHub integration server that lists repos, fetches issues, and creates comments using the GitHub REST API" \
+    --output github_server.py --with-client --with-tests
+
+mcpresso brew "A PostgreSQL database server that executes queries, lists tables, and describes schemas with connection pooling" \
+    --output postgres_server.py --with-client
+
+mcpresso brew "A Slack notification server that sends messages, creates channels, and lists workspace members" \
+    --output slack_server.py --with-client --with-tests
+
+mcpresso brew "A weather server that gets current conditions and 5-day forecasts using the OpenWeatherMap API" \
+    --output weather_server.py --with-client
+
+mcpresso brew "An email server with send, read inbox, search, and draft capabilities using SMTP and IMAP" \
+    --output email_server.py --with-client
 ```
 
 ---
@@ -388,9 +495,10 @@ If you use MCPresso in academic work, please cite:
 
 ```bibtex
 @software{mcpresso2025,
+  author  = {Sanjoy Kumar},
   title   = {MCPresso: Brewing Production-Ready MCP Servers in Under 60 Seconds},
-  year    = {2025},
-  note    = {Python package. \url{https://github.com/your-org/mcpresso}},
-  version = {0.1.0}
+  year    = {2026},
+  note    = {Python package. \url{https://github.com/imsanjoykb/mcpresso}},
+  version = {1.1.0}
 }
 ```
