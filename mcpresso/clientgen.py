@@ -27,12 +27,6 @@ from mcpresso.models import ClientGenResult, ToolSpec
 
 logger = logging.getLogger(__name__)
 
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
-
-
 class MCPClientGenerator:
     """Generates a runnable MCP client script from a server's tool definitions.
 
@@ -58,19 +52,7 @@ class MCPClientGenerator:
         server_file: str,
         server_name: str = "mcp_server",
     ) -> ClientGenResult:
-        """Generate a complete, runnable MCP client script.
 
-        Args:
-            tool_definitions: List of ToolSpec objects extracted from the
-                generated server code.
-            server_file: Filename (or path) of the server script, e.g.
-                ``"my_server.py"``.  Used in the ``StdioServerParameters``.
-            server_name: Human-readable name used in comments and print output.
-
-        Returns:
-            ClientGenResult containing the client source code, the number of
-            tool calls generated, and a mapping of tool → example args.
-        """
         t0 = time.monotonic()
         logger.info(
             "Generating client script [server=%s, tools=%d]",
@@ -111,30 +93,7 @@ class MCPClientGenerator:
         )
 
 
-# ---------------------------------------------------------------------------
-# Example argument inference
-# ---------------------------------------------------------------------------
-
-
 def _infer_example_args(spec: ToolSpec) -> dict[str, Any]:
-    """Infer realistic example argument values from a tool's JSON Schema.
-
-    Rules (applied per property):
-    - ``enum``          → first enum value
-    - type ``number``   → 42.0  (or a more contextual value based on name)
-    - type ``integer``  → 10
-    - type ``string``   → pick contextually based on param name, else ``"example"``
-    - type ``boolean``  → ``True``
-    - type ``array``    → ``[]``
-    - type ``object``   → ``{}``
-    - no type / unknown → ``"example"``
-
-    Args:
-        spec: ToolSpec whose ``input_schema`` holds the JSON Schema.
-
-    Returns:
-        Dict mapping parameter names to example values.
-    """
     props: dict[str, Any] = spec.input_schema.get("properties", {})
     required: list[str] = spec.input_schema.get("required", [])
 
@@ -149,15 +108,6 @@ def _infer_example_args(spec: ToolSpec) -> dict[str, Any]:
 
 
 def _example_value(name: str, schema: dict[str, Any]) -> Any:
-    """Derive a single example value for one parameter.
-
-    Args:
-        name: Parameter name — used to pick contextual examples.
-        schema: JSON Schema dict for this parameter.
-
-    Returns:
-        A Python value representative of the parameter type and purpose.
-    """
     # Enum → first option
     if "enum" in schema:
         return schema["enum"][0]
@@ -229,22 +179,8 @@ def _example_value(name: str, schema: dict[str, Any]) -> Any:
 
     return "example"
 
-
-# ---------------------------------------------------------------------------
-# Code rendering helpers
-# ---------------------------------------------------------------------------
-
-
 def _render_tool_call_block(spec: ToolSpec, args: dict[str, Any]) -> str:
-    """Render a single async tool-call block for the client script.
 
-    Args:
-        spec: ToolSpec for the tool being called.
-        args: Example arguments dict to pass to the tool.
-
-    Returns:
-        Indented Python source code string (two levels of indentation).
-    """
     args_repr = json.dumps(args, indent=None) if args else "{}"
     # Multiline for readability when many args
     if len(args) > 2:
@@ -285,24 +221,7 @@ def _render_client_script(
     tool_definitions: list[ToolSpec],
     tool_call_blocks: list[str],
 ) -> str:
-    """Render the complete client Python source file.
 
-    Uses a *dynamic* runtime loop over ``session.list_tools()`` so the client
-    works correctly even when the generation phase under-counted tools (e.g.
-    servers that use a single dispatcher handler internally).  Pre-computed
-    example args from ``_infer_example_args`` are embedded as a dict and used
-    when the tool name matches; otherwise an empty dict is sent.
-
-    Args:
-        server_file: Filename of the MCP server to connect to.
-        server_name: Human-readable server name for output headers.
-        tool_definitions: All tool specs (for the header comment).
-        tool_call_blocks: Pre-rendered async call block strings (kept for
-            reference but the dynamic loop is the primary call path).
-
-    Returns:
-        Complete Python source code string for the client script.
-    """
     tool_list_comments = "\n".join(
         f"#   {i+1}. {s.name}" for i, s in enumerate(tool_definitions)
     )
@@ -443,14 +362,6 @@ if __name__ == "__main__":
 
 
 def _client_filename(server_file: str) -> str:
-    """Derive the client filename from the server filename.
-
-    Args:
-        server_file: Server filename, e.g. ``"my_server.py"``.
-
-    Returns:
-        Client filename, e.g. ``"client_my_server.py"``.
-    """
     import os
     base = os.path.basename(server_file)
     stem, ext = os.path.splitext(base)
