@@ -1,11 +1,4 @@
-"""Tests for mcpresso.scorer — Composite Confidence Scoring.
-
-All tests are deterministic (no API calls). The scorer relies only on
-the validation report and source code analysis.
-"""
-
 from __future__ import annotations
-
 import pytest
 from mcpresso.scorer import (
     MCPScorer,
@@ -24,10 +17,6 @@ from mcpresso.models import (
     IssueSeverity,
 )
 from mcpresso.validator import MCPValidator
-
-# ---------------------------------------------------------------------------
-# Shared fixtures
-# ---------------------------------------------------------------------------
 
 GOOD_SERVER = '''"""A well-formed MCP server."""
 import asyncio, logging, os
@@ -141,12 +130,6 @@ def _make_mock_report(
         validation_time_ms=10.0,
         source_code_hash="a" * 64,
     )
-
-
-# ---------------------------------------------------------------------------
-# Tests — MCPScorer
-# ---------------------------------------------------------------------------
-
 
 class TestMCPScorer:
     """Unit tests for the MCPScorer class."""
