@@ -121,6 +121,41 @@ mcpresso registry search "slack notification"
 mcpresso registry export backup.json
 ```
 
+---
+
+## CLI Commands Reference
+
+### brew
+
+Generate a production-ready MCP server from a plain English description.
+
+```bash
+# Basic brew (auto-repair enabled by default)
+mcpresso brew "A server that adds, subtracts, multiplies and divides numbers"
+
+# Save to a specific file
+mcpresso brew "A server that fetches GitHub issues" --output github_server.py
+
+# Generate server + companion client for immediate testing
+mcpresso brew "A todo list server with create, list, complete, and delete tools" \
+    --output todo_server.py --with-client
+
+# Generate server + test suite
+mcpresso brew "A weather forecast server" --output weather_server.py --with-tests
+
+# Generate everything: server + client + tests
+mcpresso brew "A URL shortener server" --output url_server.py --with-client --with-tests
+
+# Skip auto-repair (faster, less polished)
+mcpresso brew "A simple echo server" --no-repair
+
+# Verbose output with per-category validation scores
+mcpresso brew "A Slack notification server" --verbose
+
+# Pass API key directly (overrides .env)
+mcpresso brew "A database query server" --api-key sk-ant-xxxx
+```
+
 ### Python API
 
 ```python
