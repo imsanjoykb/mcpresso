@@ -1,21 +1,12 @@
-"""Tests for mcpresso.registry — Semantic MCP Server Template Registry.
-
-Uses a temporary directory for all registry operations (no ~/.mcpresso pollution).
-Embedding model is mocked to avoid heavy ML dependency in CI.
-"""
-
 from __future__ import annotations
-
 import json
 import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
 import numpy as np
 import pytest
-
 from mcpresso.models import RegistryEntry, RegistryMatchType
 from mcpresso.registry import (
     MCPRegistry,
@@ -27,17 +18,13 @@ from mcpresso.registry import (
 )
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def _make_entry(
     description: str = "A GitHub issue tracker server",
     score: float = 85.0,
     tier: str = "STAGING_READY",
     embedding: list[float] | None = None,
 ) -> RegistryEntry:
-    """Create a minimal RegistryEntry for testing."""
+    # Create a minimal RegistryEntry for testing.
     if embedding is None:
         # Use a simple unit vector for deterministic similarity math
         embedding = [0.0] * 383 + [1.0]
@@ -55,24 +42,13 @@ def _make_entry(
         repair_iterations=0,
     )
 
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 @pytest.fixture
 def tmp_registry(tmp_path: Path) -> MCPRegistry:
-    """Create a registry backed by a temporary directory."""
+    # Create a registry backed by a temporary directory.
     return MCPRegistry(registry_dir=tmp_path)
 
-
-# ---------------------------------------------------------------------------
-# Tests — Core CRUD
-# ---------------------------------------------------------------------------
-
-
 class TestRegistryCRUD:
-    """Tests for basic save/get/list/delete operations."""
+    # Tests for basic save/get/list/delete operations.
 
     def test_save_and_get(self, tmp_registry: MCPRegistry):
         """Saved entry must be retrievable by ID."""
@@ -108,24 +84,24 @@ class TestRegistryCRUD:
         assert tmp_registry.list_all() == []
 
     def test_delete_nonexistent_returns_false(self, tmp_registry: MCPRegistry):
-        """Deleting a non-existent entry must return False."""
+        # Deleting a non-existent entry must return False.
         result = tmp_registry.delete("nonexistent-id")
         assert result is False
 
     def test_get_nonexistent_returns_none(self, tmp_registry: MCPRegistry):
-        """Getting a non-existent entry must return None."""
+        # Getting a non-existent entry must return None.
         result = tmp_registry.get("nonexistent-id-xyz")
         assert result is None
 
     def test_save_persists_to_file(self, tmp_registry: MCPRegistry):
-        """Saving must write a JSON file to the registry directory."""
+        # Saving must write a JSON file to the registry directory.
         entry = _make_entry()
         tmp_registry.save(entry)
         entry_file = tmp_registry.registry_dir / f"{entry.id}.json"
         assert entry_file.exists()
 
     def test_json_file_is_valid(self, tmp_registry: MCPRegistry):
-        """Saved JSON file must be parseable."""
+        # Saved JSON file must be parseable.
         entry = _make_entry()
         tmp_registry.save(entry)
         entry_file = tmp_registry.registry_dir / f"{entry.id}.json"
@@ -134,17 +110,11 @@ class TestRegistryCRUD:
         assert data["id"] == entry.id
         assert data["description"] == entry.description
 
-
-# ---------------------------------------------------------------------------
-# Tests — Search
-# ---------------------------------------------------------------------------
-
-
 class TestRegistrySearch:
-    """Tests for semantic similarity search."""
+    # Tests for semantic similarity search.
 
     def test_search_empty_registry_returns_none(self, tmp_registry: MCPRegistry):
-        """Searching an empty registry must return None."""
+        # earching an empty registry must return None.
         with patch("mcpresso.registry._embed", return_value=[0.1] * 384):
             result = tmp_registry.search("some description")
         assert result is None
@@ -206,11 +176,6 @@ class TestRegistrySearch:
                 )
 
 
-# ---------------------------------------------------------------------------
-# Tests — Export / Import
-# ---------------------------------------------------------------------------
-
-
 class TestRegistryExportImport:
     """Tests for registry export and import functionality."""
 
@@ -269,11 +234,6 @@ class TestRegistryExportImport:
         assert len(registry.list_all()) == 1  # still just one entry
 
 
-# ---------------------------------------------------------------------------
-# Tests — Utility Functions
-# ---------------------------------------------------------------------------
-
-
 class TestRegistryUtils:
     """Tests for utility functions."""
 
@@ -310,22 +270,22 @@ class TestRegistryUtils:
         assert tags == sorted(tags)
 
     def test_resolve_match_type_adapt(self):
-        """Similarity > adapt_threshold → ADAPT."""
+        # Similarity > adapt_threshold → ADAPT
         mt = _resolve_match_type(0.90, adapt_threshold=0.85, seed_threshold=0.60)
         assert mt == RegistryMatchType.ADAPT
 
     def test_resolve_match_type_seed(self):
-        """Similarity in [seed, adapt) → SEED."""
+        # Similarity in [seed, adapt) → SEED
         mt = _resolve_match_type(0.70, adapt_threshold=0.85, seed_threshold=0.60)
         assert mt == RegistryMatchType.SEED
 
     def test_resolve_match_type_full(self):
-        """Similarity < seed_threshold → FULL_GENERATION."""
+        # Similarity < seed_threshold → FULL_GENERATION.
         mt = _resolve_match_type(0.40, adapt_threshold=0.85, seed_threshold=0.60)
         assert mt == RegistryMatchType.FULL_GENERATION
 
     def test_serialize_deserialize_roundtrip(self):
-        """Serialized entry must deserialize back to identical fields."""
+        # Serialized entry must deserialize back to identical fields.
         entry = _make_entry()
         serialized = _serialize_entry(entry)
         deserialized = _deserialize_entry(serialized)
@@ -349,17 +309,10 @@ class TestRegistryUtils:
         assert stats["entry_count"] == 2
         assert abs(stats["mean_score"] - 85.0) < 0.1
 
-
-# ---------------------------------------------------------------------------
-# Tests — create_entry factory
-# ---------------------------------------------------------------------------
-
-
 class TestCreateEntry:
-    """Tests for the MCPRegistry.create_entry factory method."""
 
     def test_create_entry_returns_registry_entry(self, tmp_registry: MCPRegistry):
-        """create_entry must return a RegistryEntry."""
+        # create_entry must return a RegistryEntry.
         with patch("mcpresso.registry._embed", return_value=[0.1] * 384):
             entry = tmp_registry.create_entry(
                 description="A GitHub server",
@@ -373,7 +326,7 @@ class TestCreateEntry:
         assert entry.readiness_tier == "STAGING_READY"
 
     def test_create_entry_assigns_uuid(self, tmp_registry: MCPRegistry):
-        """create_entry must assign a valid UUID."""
+        # create_entry must assign a valid UUID.
         with patch("mcpresso.registry._embed", return_value=[0.1] * 384):
             entry = tmp_registry.create_entry(
                 description="test",
@@ -387,7 +340,7 @@ class TestCreateEntry:
         assert parsed.version == 4
 
     def test_create_entry_extracts_tags(self, tmp_registry: MCPRegistry):
-        """create_entry must auto-extract tags."""
+        # create_entry must auto-extract tags
         with patch("mcpresso.registry._embed", return_value=[0.1] * 384):
             entry = tmp_registry.create_entry(
                 description="A GitHub API integration server",
